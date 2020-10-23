@@ -38,30 +38,70 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__webpack_require__(186));
 const github = __importStar(__webpack_require__(438));
-function run() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const context = github.context;
-            const readyToMergeLabelName = core.getInput('merge-label', {
-                required: true,
-            });
-            if (context.eventName !== 'pull_request' ||
-                context.payload.action !== 'labeled') {
-                return;
-            }
-            const payload = context.payload;
-            const labels = payload.pull_request.labels;
-            const hasReadyToMergeLabel = labels.find((label) => label.name === readyToMergeLabelName);
-            if (!hasReadyToMergeLabel) {
-                console.log(`Pull Request does not have the "${readyToMergeLabelName}" label. Unable to merge`);
-                return;
-            }
+const mapMergeMethod = (mergeMethod) => {
+    switch (mergeMethod) {
+        case 'merge':
+            return 'merge';
+        case 'rebase':
+            return 'rebase';
+        case 'squash':
+            return 'squash';
+        default:
+            core.warning(`Unknown merge method provided to the script: "${mergeMethod}", using default "merge" method.`);
+            return 'merge';
+    }
+};
+const run = () => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const context = github.context;
+        const readyToMergeLabelName = core.getInput('merge-label', {
+            required: true,
+        });
+        const githubToken = core.getInput('github-token', { required: true });
+        const untypedMergeMethod = core.getInput('merge-method', { required: true });
+        const mergeMethod = mapMergeMethod(untypedMergeMethod);
+        if (context.eventName !== 'pull_request' ||
+            context.payload.action !== 'labeled') {
+            return;
         }
-        catch (error) {
-            core.setFailed(error.message);
+        const payload = context.payload;
+        const labels = payload.pull_request.labels;
+        const octokit = github.getOctokit(githubToken);
+        const hasReadyToMergeLabel = labels.find((label) => label.name === readyToMergeLabelName);
+        if (!hasReadyToMergeLabel) {
+            console.log(`Pull Request does not have the "${readyToMergeLabelName}" label. Unable to merge`);
+            // return
         }
-    });
-}
+        const pullRequestId = {
+            owner: (_a = payload.repository.owner.name) !== null && _a !== void 0 ? _a : '',
+            repo: payload.repository.name,
+            pull_number: payload.pull_request.number,
+        };
+        const pullRequest = yield octokit.pulls.get(pullRequestId);
+        console.log('Payload');
+        console.log(payload);
+        console.log('Pull Request');
+        console.log(pullRequest);
+        if (pullRequest.data.state !== 'open') {
+            console.log('Pull Request is not open. Cannot merge it.');
+            return;
+        }
+        if (pullRequest.data.draft) {
+            console.log('Pull Request is in draft. Cannot merge it.');
+            return;
+        }
+        if (!pullRequest.data.mergeable) {
+            console.log("Pull Request can't be merged.");
+            return;
+        }
+        console.log('Pull Request is about to be merged.');
+        yield octokit.pulls.merge(Object.assign(Object.assign({}, pullRequestId), { merge_method: mergeMethod }));
+    }
+    catch (error) {
+        core.setFailed(error.message);
+    }
+});
 run();
 
 
