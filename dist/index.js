@@ -42,8 +42,20 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const context = github.context;
-            console.log(`Action: ${context.payload.action}`);
-            console.log(`Event name: ${context.eventName}`);
+            const readyToMergeLabelName = core.getInput('merge-label', {
+                required: true,
+            });
+            if (context.eventName !== 'pull_request' ||
+                context.payload.action !== 'labeled') {
+                return;
+            }
+            const payload = context.payload;
+            const labels = payload.pull_request.labels;
+            const hasReadyToMergeLabel = labels.find((label) => label.name === readyToMergeLabelName);
+            if (!hasReadyToMergeLabel) {
+                console.log(`Pull Request does not have the "${readyToMergeLabelName}" label. Unable to merge`);
+                return;
+            }
         }
         catch (error) {
             core.setFailed(error.message);

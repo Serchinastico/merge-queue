@@ -1,6 +1,11 @@
 name: 'MergeBot'
 description: 'MergeBot merges open PRs in a safe manner'
 author: 'Sketch'
+inputs:
+  merge-label:
+    required: true
+    default: ready-to-merge
+    description: 'Name of the label used to tag PRs as ready-to-merge'
 outputs:
   debug: # id of output
     description: 'The time we greeted you'
