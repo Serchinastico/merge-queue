@@ -7,7 +7,7 @@ async function run(): Promise<void> {
 
     core.debug(`Payload > Action: ${context.payload.action}`)
     core.debug(`Event name: ${context.eventName}`)
-    core.debug(JSON.stringify(context))
+    core.setOutput('Context', context)
   } catch (error) {
     core.setFailed(error.message)
   }
