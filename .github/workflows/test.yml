@@ -1,10 +1,11 @@
 name: 'build-test'
 on: # rebuild any PRs and main branch changes
   pull_request:
+  label:
+    types: [created]
   push:
     branches:
       - main
-      - 'releases/*'
 
 jobs:
   build: # make sure build/ci work properly
@@ -19,4 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: ./
+      - name: mergebot
+        uses: ./
+      - name: Get the output time
+        run: echo "The time was ${{ steps.mergebot.outputs.debug }}"
