@@ -99,6 +99,11 @@ const run = async (): Promise<void> => {
         pr.labels.find((label) => label.name === readyToMergeLabelName)
       )
 
+      console.log('First pull request is:')
+      console.log(firstPullRequestInQueue)
+      console.log(firstPullRequestInQueue?.id)
+      console.log(pullRequest.data.id)
+
       if (firstPullRequestInQueue?.id !== pullRequest.data.id) {
         console.log(
           'Pull Request is not next in line. Waiting for other Pull Request to be merged first.'

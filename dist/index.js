@@ -110,6 +110,10 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
                 direction: 'asc',
             });
             const firstPullRequestInQueue = allPullRequests.data.find((pr) => pr.labels.find((label) => label.name === readyToMergeLabelName));
+            console.log('First pull request is:');
+            console.log(firstPullRequestInQueue);
+            console.log(firstPullRequestInQueue === null || firstPullRequestInQueue === void 0 ? void 0 : firstPullRequestInQueue.id);
+            console.log(pullRequest.data.id);
             if ((firstPullRequestInQueue === null || firstPullRequestInQueue === void 0 ? void 0 : firstPullRequestInQueue.id) !== pullRequest.data.id) {
                 console.log('Pull Request is not next in line. Waiting for other Pull Request to be merged first.');
                 return;
