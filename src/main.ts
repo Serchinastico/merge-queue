@@ -1,16 +1,13 @@
 import * as core from '@actions/core'
-import { wait } from './wait'
+import * as github from '@actions/github'
 
 async function run(): Promise<void> {
   try {
-    const ms = '1000'
-    core.debug(`Waiting ${ms} milliseconds ...`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
+    const context = github.context
 
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
-
-    core.setOutput('time', new Date().toTimeString())
+    core.debug(`Payload > Action: ${context.payload.action}`)
+    core.debug(`Event name: ${context.eventName}`)
+    core.debug(JSON.stringify(context))
   } catch (error) {
     core.setFailed(error.message)
   }
