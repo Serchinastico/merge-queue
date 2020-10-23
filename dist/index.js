@@ -78,10 +78,10 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
             repo: payload.repository.name,
             pull_number: payload.pull_request.number,
         };
-        console.log(pullRequestId);
-        const pullRequest = yield octokit.pulls.get(pullRequestId);
         console.log('Payload');
         console.log(payload);
+        console.log(pullRequestId);
+        const pullRequest = yield octokit.pulls.get(pullRequestId);
         console.log('Pull Request');
         console.log(pullRequest);
         if (pullRequest.data.state !== 'open') {
