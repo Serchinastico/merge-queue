@@ -56,6 +56,7 @@ const run = async (): Promise<void> => {
       repo: payload.repository.name,
       pull_number: payload.pull_request.number,
     }
+    console.log(pullRequestId)
 
     const pullRequest = await octokit.pulls.get(pullRequestId)
 
