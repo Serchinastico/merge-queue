@@ -42,7 +42,7 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const context = github.context;
-            console.log(`Payload > Action: ${context.payload.action}`);
+            console.log(`Action: ${context.payload.action}`);
             console.log(`Event name: ${context.eventName}`);
         }
         catch (error) {
