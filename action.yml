@@ -1,6 +1,9 @@
 name: 'MergeBot'
 description: 'MergeBot merges open PRs in a safe manner'
 author: 'Sketch'
+outputs:
+  debug: # id of output
+    description: 'The time we greeted you'
 runs:
   using: 'node12'
   main: 'dist/index.js'
