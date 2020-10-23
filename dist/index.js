@@ -62,8 +62,8 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
         const untypedMergeMethod = core.getInput('merge-method', { required: true });
         const baseBranchName = core.getInput('base-branch', { required: true });
         const mergeMethod = mapMergeMethod(untypedMergeMethod);
-        if (context.eventName !== 'pull_request' ||
-            context.payload.action !== 'labeled') {
+        if (context.eventName !== 'pull_request') {
+            console.log('Unknown Github event. Stopping script.');
             return;
         }
         const payload = context.payload;

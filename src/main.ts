@@ -31,10 +31,8 @@ const run = async (): Promise<void> => {
 
     const mergeMethod = mapMergeMethod(untypedMergeMethod)
 
-    if (
-      context.eventName !== 'pull_request' ||
-      context.payload.action !== 'labeled'
-    ) {
+    if (context.eventName !== 'pull_request') {
+      console.log('Unknown Github event. Stopping script.')
       return
     }
 

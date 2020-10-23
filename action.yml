@@ -7,7 +7,7 @@ inputs:
     description: "Github token used to apply changes to the Pull Request"
   base-branch:
     required: true
-    default: master
+    default: main
     description: "Name of the default branch where the bot should merge Pull Requests"
   merge-method:
     required: false
