@@ -74,7 +74,7 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
             // return
         }
         const pullRequestId = {
-            owner: (_a = payload.repository.owner.name) !== null && _a !== void 0 ? _a : '',
+            owner: (_a = payload.repository.owner.name) !== null && _a !== void 0 ? _a : payload.repository.owner.login,
             repo: payload.repository.name,
             pull_number: payload.pull_request.number,
         };

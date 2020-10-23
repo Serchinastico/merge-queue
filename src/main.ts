@@ -52,7 +52,7 @@ const run = async (): Promise<void> => {
     }
 
     const pullRequestId = {
-      owner: payload.repository.owner.name ?? '',
+      owner: payload.repository.owner.name ?? payload.repository.owner.login,
       repo: payload.repository.name,
       pull_number: payload.pull_request.number,
     }
