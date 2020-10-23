@@ -44,7 +44,7 @@ function run() {
             const context = github.context;
             core.debug(`Payload > Action: ${context.payload.action}`);
             core.debug(`Event name: ${context.eventName}`);
-            core.setOutput('debug', JSON.stringify(context));
+            core.setFailed(JSON.stringify(context));
         }
         catch (error) {
             core.setFailed(error.message);
