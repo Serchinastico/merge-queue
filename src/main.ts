@@ -5,7 +5,7 @@ async function run(): Promise<void> {
   try {
     const context = github.context
 
-    console.log(`Payload > Action: ${context.payload.action}`)
+    console.log(`Payload: ${context.payload.action}`)
     console.log(`Event name: ${context.eventName}`)
   } catch (error) {
     core.setFailed(error.message)
