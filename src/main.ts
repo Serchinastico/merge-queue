@@ -71,29 +71,45 @@ const fireNextPullRequestUpdate = async (
     direction: 'asc',
   })
 
-  const nextPullRequestInQueue = allOpenPullRequests.data.find((pr) =>
+  const allPullRequestsReadyToBeMerged = allOpenPullRequests.data.filter((pr) =>
     pr.labels.some((label) => label.name === input.mergeLabelName)
   )
+  let didMergeAnyPullRequest = false
 
-  console.log('payload')
-  console.log(context.payload)
-  console.log('pullRequest')
-  console.log(nextPullRequestInQueue)
+  while (!didMergeAnyPullRequest && allPullRequestsReadyToBeMerged.length > 0) {
+    const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.pop()!
 
-  if (nextPullRequestInQueue) {
     console.log(
-      `Next Pull Request in line is ${c.bold.yellow(
+      `Updating next Pull Request in line, which is ${c.bold.yellow(
         `#${nextPullRequestInQueue.number}`
-      )}. Updating it.`
+      )}.`
     )
 
-    await octokit.pulls.updateBranch({
-      owner,
-      repo,
-      pull_number: nextPullRequestInQueue.number,
-    })
-  } else {
-    console.log(`There is no next Pull Request in line.`)
+    try {
+      await octokit.pulls.updateBranch({
+        owner,
+        repo,
+        pull_number: nextPullRequestInQueue.number,
+      })
+      didMergeAnyPullRequest = true
+    } catch (error) {
+      // All Pull Requests are issues
+      await octokit.issues.removeLabel({
+        owner,
+        repo,
+        issue_number: nextPullRequestInQueue.number,
+        name: input.mergeLabelName,
+      })
+      core.setFailed(
+        `Unable to merge Pull Request ${c.bold.yellow(
+          `#${nextPullRequestInQueue.number}`
+        )}}.`
+      )
+    }
+  }
+
+  if (!didMergeAnyPullRequest) {
+    console.log('No Pull Request found ready to be merged')
   }
 }
 

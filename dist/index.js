@@ -86,21 +86,32 @@ const fireNextPullRequestUpdate = (context, input, octokit) => __awaiter(void 0,
         sort: 'created',
         direction: 'asc',
     });
-    const nextPullRequestInQueue = allOpenPullRequests.data.find((pr) => pr.labels.some((label) => label.name === input.mergeLabelName));
-    console.log('payload');
-    console.log(context.payload);
-    console.log('pullRequest');
-    console.log(nextPullRequestInQueue);
-    if (nextPullRequestInQueue) {
-        console.log(`Next Pull Request in line is ${ansi_colors_1.default.bold.yellow(`#${nextPullRequestInQueue.number}`)}. Updating it.`);
-        yield octokit.pulls.updateBranch({
-            owner,
-            repo,
-            pull_number: nextPullRequestInQueue.number,
-        });
+    const allPullRequestsReadyToBeMerged = allOpenPullRequests.data.filter((pr) => pr.labels.some((label) => label.name === input.mergeLabelName));
+    let didMergeAnyPullRequest = false;
+    while (!didMergeAnyPullRequest && allPullRequestsReadyToBeMerged.length > 0) {
+        const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.pop();
+        console.log(`Updating next Pull Request in line, which is ${ansi_colors_1.default.bold.yellow(`#${nextPullRequestInQueue.number}`)}.`);
+        try {
+            yield octokit.pulls.updateBranch({
+                owner,
+                repo,
+                pull_number: nextPullRequestInQueue.number,
+            });
+            didMergeAnyPullRequest = true;
+        }
+        catch (error) {
+            // All Pull Requests are issues
+            yield octokit.issues.removeLabel({
+                owner,
+                repo,
+                issue_number: nextPullRequestInQueue.number,
+                name: input.mergeLabelName,
+            });
+            core.setFailed(`Unable to merge Pull Request ${ansi_colors_1.default.bold.yellow(`#${nextPullRequestInQueue.number}`)}}.`);
+        }
     }
-    else {
-        console.log(`There is no next Pull Request in line.`);
+    if (!didMergeAnyPullRequest) {
+        console.log('No Pull Request found ready to be merged');
     }
 });
 const mergePullRequestIfPossible = (context, input, octokit) => __awaiter(void 0, void 0, void 0, function* () {
