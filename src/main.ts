@@ -120,6 +120,11 @@ const mergePullRequestIfPossible = async (
 
   const pullRequest = await octokit.pulls.get(pullRequestId)
 
+  console.log('payload')
+  console.log(payload)
+  console.log('pullRequest')
+  console.log(pullRequest)
+
   if (pullRequest.data.state !== 'open') {
     console.log('Pull Request is not open. Cannot merge it.')
     return
