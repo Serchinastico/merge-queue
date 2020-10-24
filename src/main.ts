@@ -180,6 +180,7 @@ const run = async (): Promise<void> => {
 
     if (isEventInBaseBranch(context)) {
       console.log('Running base branch flow')
+
       await fireNextPullRequestUpdate(context, input, octokit)
     } else {
       console.log('Running Pull Request flow')
