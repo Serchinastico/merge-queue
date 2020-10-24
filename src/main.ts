@@ -171,6 +171,7 @@ const run = async (): Promise<void> => {
 
     if (input.graceTime > 0) {
       log(`Sleeping for ${input.graceTime} ms`)
+
       await delay(input.graceTime)
     }
 
