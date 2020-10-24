@@ -113,6 +113,7 @@ const getInput = () => {
     const mergeMethod = core.getInput('merge-method', { required: true });
     const delayTime = core.getInput('delay-time', { required: true });
     const mergeLabelName = core.getInput('merge-label', { required: true });
+    const blockMergeLabelName = core.getInput('block-label', { required: true });
     const mergeErrorLabelName = core.getInput('error-label', { required: true });
     const baseBranchName = core.getInput('base-branch', { required: true });
     return {
@@ -120,6 +121,7 @@ const getInput = () => {
         mergeMethod: mergeMethod_1.mapMergeMethod(mergeMethod),
         delayTime: (_a = Number.parseInt(delayTime)) !== null && _a !== void 0 ? _a : 0,
         mergeLabelName,
+        blockMergeLabelName,
         mergeErrorLabelName,
         baseBranchName,
     };
@@ -128,9 +130,12 @@ const isEventInBaseBranch = (context) => {
     const isFromPullRequest = !!context.payload.pull_request;
     return !isFromPullRequest;
 };
+const isPullRequestMergeable = (pullRequest, input) => pullRequest.labels.some((label) => label.name === input.mergeLabelName) &&
+    pullRequest.labels.every((label) => label.name !== input.mergeErrorLabelName &&
+        label.name !== input.blockMergeLabelName);
 const fireNextPullRequestUpdate = (input, octoapi) => __awaiter(void 0, void 0, void 0, function* () {
     const allOpenPullRequests = yield octoapi.getAllPullRequests();
-    const allPullRequestsReadyToBeMerged = allOpenPullRequests.data.filter((pr) => pr.labels.some((label) => label.name === input.mergeLabelName));
+    const allPullRequestsReadyToBeMerged = allOpenPullRequests.data.filter((pr) => isPullRequestMergeable(pr, input));
     let didMergeAnyPullRequest = false;
     while (!didMergeAnyPullRequest && allPullRequestsReadyToBeMerged.length > 0) {
         const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.shift();
@@ -153,10 +158,8 @@ const fireNextPullRequestUpdate = (input, octoapi) => __awaiter(void 0, void 0, 
 const mergePullRequestIfPossible = (context, input, octoapi) => __awaiter(void 0, void 0, void 0, function* () {
     const payload = context.payload;
     const prNumber = payload.pull_request.number;
-    const labels = payload.pull_request.labels;
-    const hasReadyToMergeLabel = labels.some((label) => label.name === input.mergeLabelName);
-    if (!hasReadyToMergeLabel) {
-        log_1.log(`PR #${prNumber} does not have the "${input.mergeLabelName}" label.`);
+    if (!isPullRequestMergeable(payload.pull_request, input)) {
+        log_1.log(`PR #${prNumber} can't be merged. It does not have the right labels.`);
         return;
     }
     const pullRequest = yield octoapi.getPullRequest(prNumber);
@@ -177,7 +180,7 @@ const mergePullRequestIfPossible = (context, input, octoapi) => __awaiter(void 0
         log_1.log(`PR #${prNumber} is outdated.`);
         // See if it's next in line
         const allPullRequests = yield octoapi.getAllPullRequests();
-        const firstPullRequestInQueue = allPullRequests.data.find((pr) => pr.labels.find((label) => label.name === input.mergeLabelName));
+        const firstPullRequestInQueue = allPullRequests.data.find((pr) => isPullRequestMergeable(pr, input));
         if ((firstPullRequestInQueue === null || firstPullRequestInQueue === void 0 ? void 0 : firstPullRequestInQueue.id) !== pullRequest.data.id) {
             log_1.log(`PR #${prNumber} is not next in line.`);
             return;
@@ -199,6 +202,7 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
         const repositoryUserName = repository === null || repository === void 0 ? void 0 : repository.owner.login;
         const owner = (_a = repositoryCompanyName !== null && repositoryCompanyName !== void 0 ? repositoryCompanyName : repositoryUserName) !== null && _a !== void 0 ? _a : '';
         const repo = (_b = repository === null || repository === void 0 ? void 0 : repository.name) !== null && _b !== void 0 ? _b : '';
+        log_1.log(`Sleeping for ${input.delayTime} ms`);
         yield delay_1.delay(input.delayTime);
         const octoapi = octoapi_1.createOctoapi({ token: input.githubToken, owner, repo });
         if (isEventInBaseBranch(context)) {

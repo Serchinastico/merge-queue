@@ -12,6 +12,7 @@ interface Input {
   mergeMethod: MergeMethod
   delayTime: number
   mergeLabelName: string
+  blockMergeLabelName: string
   mergeErrorLabelName: string
   baseBranchName: string
 }
@@ -21,6 +22,7 @@ const getInput = (): Input => {
   const mergeMethod = core.getInput('merge-method', { required: true })
   const delayTime = core.getInput('delay-time', { required: true })
   const mergeLabelName = core.getInput('merge-label', { required: true })
+  const blockMergeLabelName = core.getInput('block-label', { required: true })
   const mergeErrorLabelName = core.getInput('error-label', { required: true })
   const baseBranchName = core.getInput('base-branch', { required: true })
 
@@ -29,6 +31,7 @@ const getInput = (): Input => {
     mergeMethod: mapMergeMethod(mergeMethod),
     delayTime: Number.parseInt(delayTime) ?? 0,
     mergeLabelName,
+    blockMergeLabelName,
     mergeErrorLabelName,
     baseBranchName,
   }
@@ -40,11 +43,22 @@ const isEventInBaseBranch = (context: Context) => {
   return !isFromPullRequest
 }
 
+const isPullRequestMergeable = (
+  pullRequest: { labels: { name: string }[] },
+  input: Input
+) =>
+  pullRequest.labels.some((label) => label.name === input.mergeLabelName) &&
+  pullRequest.labels.every(
+    (label) =>
+      label.name !== input.mergeErrorLabelName &&
+      label.name !== input.blockMergeLabelName
+  )
+
 const fireNextPullRequestUpdate = async (input: Input, octoapi: Octoapi) => {
   const allOpenPullRequests = await octoapi.getAllPullRequests()
 
   const allPullRequestsReadyToBeMerged = allOpenPullRequests.data.filter((pr) =>
-    pr.labels.some((label) => label.name === input.mergeLabelName)
+    isPullRequestMergeable(pr, input)
   )
   let didMergeAnyPullRequest = false
 
@@ -90,13 +104,9 @@ const mergePullRequestIfPossible = async (
 ) => {
   const payload = context.payload as Webhooks.EventPayloads.WebhookPayloadPullRequest
   const prNumber = payload.pull_request.number
-  const labels = payload.pull_request.labels
 
-  const hasReadyToMergeLabel = labels.some(
-    (label) => label.name === input.mergeLabelName
-  )
-  if (!hasReadyToMergeLabel) {
-    log(`PR #${prNumber} does not have the "${input.mergeLabelName}" label.`)
+  if (!isPullRequestMergeable(payload.pull_request, input)) {
+    log(`PR #${prNumber} can't be merged. It does not have the right labels.`)
     return
   }
 
@@ -125,7 +135,7 @@ const mergePullRequestIfPossible = async (
     const allPullRequests = await octoapi.getAllPullRequests()
 
     const firstPullRequestInQueue = allPullRequests.data.find((pr) =>
-      pr.labels.find((label) => label.name === input.mergeLabelName)
+      isPullRequestMergeable(pr, input)
     )
 
     if (firstPullRequestInQueue?.id !== pullRequest.data.id) {
@@ -159,6 +169,7 @@ const run = async (): Promise<void> => {
     const owner = repositoryCompanyName ?? repositoryUserName ?? ''
     const repo = repository?.name ?? ''
 
+    log(`Sleeping for ${input.delayTime} ms`)
     await delay(input.delayTime)
 
     const octoapi = createOctoapi({ token: input.githubToken, owner, repo })
