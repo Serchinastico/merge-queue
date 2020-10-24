@@ -4,11 +4,11 @@ author: 'Sketch'
 inputs:
   github-token:
     required: true
-    description: "Github token used to apply changes to the Pull Request"
+    description: 'Github token used to apply changes to the Pull Request'
   base-branch:
     required: true
     default: main
-    description: "Name of the default branch where the bot should merge Pull Requests"
+    description: 'Name of the default branch where the bot should merge Pull Requests'
   merge-method:
     required: false
     default: squash
@@ -17,6 +17,10 @@ inputs:
     required: false
     default: ready-to-merge
     description: 'Name of the label used to tag PRs as ready-to-merge'
+  error-label:
+    required: false
+    default: unable-to-merge
+    description: "Name of the label used to notify that MergeBot can't merge a Pull Request"
 outputs:
   debug: # id of output
     description: 'The time we greeted you'
