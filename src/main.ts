@@ -180,6 +180,7 @@ const run = async (): Promise<void> => {
       await fireNextPullRequestUpdate(input, octoapi)
     } else {
       log('Running Pull Request flow')
+
       await mergePullRequestIfPossible(context, input, octoapi)
     }
   } catch (error) {
