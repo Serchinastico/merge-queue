@@ -87,6 +87,10 @@ const fireNextPullRequestUpdate = (context, input, octokit) => __awaiter(void 0,
         direction: 'asc',
     });
     const nextPullRequestInQueue = allOpenPullRequests.data.find((pr) => pr.labels.some((label) => label.name === input.mergeLabelName));
+    console.log('payload');
+    console.log(context.payload);
+    console.log('pullRequest');
+    console.log(nextPullRequestInQueue);
     if (nextPullRequestInQueue) {
         console.log(`Next Pull Request in line is ${ansi_colors_1.default.bold.yellow(`#${nextPullRequestInQueue.number}`)}. Updating it.`);
         yield octokit.pulls.updateBranch({
@@ -114,10 +118,6 @@ const mergePullRequestIfPossible = (context, input, octokit) => __awaiter(void 0
         pull_number: payload.pull_request.number,
     };
     const pullRequest = yield octokit.pulls.get(pullRequestId);
-    console.log('payload');
-    console.log(payload);
-    console.log('pullRequest');
-    console.log(pullRequest);
     if (pullRequest.data.state !== 'open') {
         console.log('Pull Request is not open. Cannot merge it.');
         return;
