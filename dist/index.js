@@ -69,6 +69,7 @@ const getInput = () => {
 };
 const isEventInBaseBranch = (context) => {
     const isFromPullRequest = !!context.payload.pull_request;
+    console.log(JSON.stringify(context.payload));
     return !isFromPullRequest;
 };
 const fireNextPullRequestUpdate = (context, input, octokit) => __awaiter(void 0, void 0, void 0, function* () {
@@ -94,6 +95,9 @@ const fireNextPullRequestUpdate = (context, input, octokit) => __awaiter(void 0,
             repo,
             pull_number: nextPullRequestInQueue.number,
         });
+    }
+    else {
+        console.log(`There is no next Pull Request in line.`);
     }
 });
 const run = () => __awaiter(void 0, void 0, void 0, function* () {

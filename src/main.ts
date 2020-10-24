@@ -47,6 +47,7 @@ const getInput = (): Input => {
 const isEventInBaseBranch = (context: Context) => {
   const isFromPullRequest = !!context.payload.pull_request
 
+  console.log(JSON.stringify(context.payload))
   return !isFromPullRequest
 }
 
@@ -87,6 +88,8 @@ const fireNextPullRequestUpdate = async (
       repo,
       pull_number: nextPullRequestInQueue.number,
     })
+  } else {
+    console.log(`There is no next Pull Request in line.`)
   }
 }
 
