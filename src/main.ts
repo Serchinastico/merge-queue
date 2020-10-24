@@ -96,6 +96,11 @@ const mergePullRequestIfPossible = async (
 
   const pullRequest = await octoapi.getPullRequest(prNumber)
 
+  console.log('payload')
+  console.log(payload)
+  console.log('pullRequest')
+  console.log(pullRequest)
+
   if (pullRequest.data.state !== 'open') {
     log(`PR #${prNumber} is not open. Cannot merge it.`, 'error')
     return
