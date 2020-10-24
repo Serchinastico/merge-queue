@@ -20,6 +20,7 @@ const getInput = (): Input => {
   const mergeErrorLabelName = core.getInput('error-label', { required: true })
   const githubToken = core.getInput('github-token', { required: true })
   const mergeMethod = core.getInput('merge-method', { required: true })
+
   const baseBranchName = core.getInput('base-branch', { required: true })
 
   return {
