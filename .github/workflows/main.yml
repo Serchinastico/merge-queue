@@ -12,4 +12,4 @@ jobs:
       - name: mergebot
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.MERGE_QUEUE_GH_TOKEN }}
