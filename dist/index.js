@@ -35,9 +35,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__webpack_require__(186));
 const github = __importStar(__webpack_require__(438));
+const ansi_colors_1 = __importDefault(__webpack_require__(151));
 const mapMergeMethod = (mergeMethod) => {
     switch (mergeMethod) {
         case 'merge':
@@ -51,79 +55,115 @@ const mapMergeMethod = (mergeMethod) => {
             return 'merge';
     }
 };
+const getInput = () => {
+    const mergeLabelName = core.getInput('merge-label', { required: true });
+    const githubToken = core.getInput('github-token', { required: true });
+    const mergeMethod = core.getInput('merge-method', { required: true });
+    const baseBranchName = core.getInput('base-branch', { required: true });
+    return {
+        mergeLabelName,
+        githubToken,
+        mergeMethod: mapMergeMethod(mergeMethod),
+        baseBranchName,
+    };
+};
+const isEventInBaseBranch = (context) => {
+    const isFromPullRequest = !!context.payload.pull_request;
+    return !isFromPullRequest;
+};
+const fireNextPullRequestUpdate = (context, input, octokit) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    const repository = context.payload.repository;
+    const repositoryCompanyName = repository === null || repository === void 0 ? void 0 : repository.owner.name;
+    const repositoryUserName = repository === null || repository === void 0 ? void 0 : repository.owner.login;
+    const owner = (_a = repositoryCompanyName !== null && repositoryCompanyName !== void 0 ? repositoryCompanyName : repositoryUserName) !== null && _a !== void 0 ? _a : '';
+    const repo = (_b = repository === null || repository === void 0 ? void 0 : repository.name) !== null && _b !== void 0 ? _b : '';
+    const allOpenPullRequests = yield octokit.pulls.list({
+        owner,
+        repo,
+        state: 'open',
+        base: input.baseBranchName,
+        sort: 'created',
+        direction: 'asc',
+    });
+    const nextPullRequestInQueue = allOpenPullRequests.data.find((pr) => pr.labels.some((label) => label.name === input.mergeLabelName));
+    if (nextPullRequestInQueue) {
+        console.log(`Next Pull Request in line is ${ansi_colors_1.default.bold.yellow(`#${nextPullRequestInQueue.number}`)}. Updating it.`);
+        yield octokit.pulls.updateBranch({
+            owner,
+            repo,
+            pull_number: nextPullRequestInQueue.number,
+        });
+    }
+});
 const run = () => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _c;
     try {
         const context = github.context;
-        const readyToMergeLabelName = core.getInput('merge-label', {
-            required: true,
-        });
-        const githubToken = core.getInput('github-token', { required: true });
-        const untypedMergeMethod = core.getInput('merge-method', { required: true });
-        const baseBranchName = core.getInput('base-branch', { required: true });
-        const mergeMethod = mapMergeMethod(untypedMergeMethod);
-        if (context.eventName !== 'pull_request') {
-            console.log('Unknown Github event. Stopping script.');
-            return;
+        const input = getInput();
+        const octokit = github.getOctokit(input.githubToken);
+        if (isEventInBaseBranch(context)) {
+            yield fireNextPullRequestUpdate(context, input, octokit);
         }
-        const payload = context.payload;
-        const labels = payload.pull_request.labels;
-        const octokit = github.getOctokit(githubToken);
-        const hasReadyToMergeLabel = labels.find((label) => label.name === readyToMergeLabelName);
-        if (!hasReadyToMergeLabel) {
-            console.log(`Pull Request does not have the "${readyToMergeLabelName}" label. Unable to merge`);
-            return;
-        }
-        const pullRequestId = {
-            owner: (_a = payload.repository.owner.name) !== null && _a !== void 0 ? _a : payload.repository.owner.login,
-            repo: payload.repository.name,
-            pull_number: payload.pull_request.number,
-        };
-        console.log('Payload');
-        console.log(payload);
-        console.log(pullRequestId);
-        const pullRequest = yield octokit.pulls.get(pullRequestId);
-        console.log('Pull Request');
-        console.log(pullRequest);
-        if (pullRequest.data.state !== 'open') {
-            console.log('Pull Request is not open. Cannot merge it.');
-            return;
-        }
-        if (pullRequest.data.draft) {
-            console.log('Pull Request is in draft. Cannot merge it.');
-            return;
-        }
-        if (!pullRequest.data.mergeable) {
-            console.log("Pull Request can't be merged.");
-            return;
-        }
-        // Pull Request is out of date and we should update it
-        if (pullRequest.data.mergeable_state === 'behind') {
-            console.log('Pull Request is outdated.');
-            // See if it's next in line
-            const allPullRequests = yield octokit.pulls.list({
-                owner: pullRequestId.owner,
-                repo: pullRequestId.repo,
-                state: 'open',
-                base: baseBranchName,
-                sort: 'created',
-                direction: 'asc',
-            });
-            const firstPullRequestInQueue = allPullRequests.data.find((pr) => pr.labels.find((label) => label.name === readyToMergeLabelName));
-            console.log('First pull request is:');
-            console.log(firstPullRequestInQueue);
-            console.log(firstPullRequestInQueue === null || firstPullRequestInQueue === void 0 ? void 0 : firstPullRequestInQueue.id);
-            console.log(pullRequest.data.id);
-            if ((firstPullRequestInQueue === null || firstPullRequestInQueue === void 0 ? void 0 : firstPullRequestInQueue.id) !== pullRequest.data.id) {
-                console.log('Pull Request is not next in line. Waiting for other Pull Request to be merged first.');
+        else {
+            const payload = context.payload;
+            const labels = payload.pull_request.labels;
+            const hasReadyToMergeLabel = labels.find((label) => label.name === input.mergeLabelName);
+            if (!hasReadyToMergeLabel) {
+                console.log(`Pull Request does not have the "${input.mergeLabelName}" label. Unable to merge`);
                 return;
             }
-            console.log('Updating Pull Request.');
-            yield octokit.pulls.updateBranch(pullRequestId);
-            return;
+            const pullRequestId = {
+                owner: (_c = payload.repository.owner.name) !== null && _c !== void 0 ? _c : payload.repository.owner.login,
+                repo: payload.repository.name,
+                pull_number: payload.pull_request.number,
+            };
+            console.log('Payload');
+            console.log(payload);
+            console.log(pullRequestId);
+            const pullRequest = yield octokit.pulls.get(pullRequestId);
+            console.log('Pull Request');
+            console.log(pullRequest);
+            if (pullRequest.data.state !== 'open') {
+                console.log('Pull Request is not open. Cannot merge it.');
+                return;
+            }
+            if (pullRequest.data.draft) {
+                console.log('Pull Request is in draft. Cannot merge it.');
+                return;
+            }
+            if (!pullRequest.data.mergeable) {
+                console.log("Pull Request can't be merged.");
+                return;
+            }
+            // Pull Request is out of date and we should update it
+            if (pullRequest.data.mergeable_state === 'behind') {
+                console.log('Pull Request is outdated.');
+                // See if it's next in line
+                const allPullRequests = yield octokit.pulls.list({
+                    owner: pullRequestId.owner,
+                    repo: pullRequestId.repo,
+                    state: 'open',
+                    base: input.baseBranchName,
+                    sort: 'created',
+                    direction: 'asc',
+                });
+                const firstPullRequestInQueue = allPullRequests.data.find((pr) => pr.labels.find((label) => label.name === input.mergeLabelName));
+                console.log('First pull request is:');
+                console.log(firstPullRequestInQueue);
+                console.log(firstPullRequestInQueue === null || firstPullRequestInQueue === void 0 ? void 0 : firstPullRequestInQueue.id);
+                console.log(pullRequest.data.id);
+                if ((firstPullRequestInQueue === null || firstPullRequestInQueue === void 0 ? void 0 : firstPullRequestInQueue.id) !== pullRequest.data.id) {
+                    console.log('Pull Request is not next in line. Waiting for other Pull Request to be merged first.');
+                    return;
+                }
+                console.log('Updating Pull Request.');
+                yield octokit.pulls.updateBranch(pullRequestId);
+                return;
+            }
+            console.log('Pull Request is about to be merged.');
+            yield octokit.pulls.merge(Object.assign(Object.assign({}, pullRequestId), { merge_method: input.mergeMethod }));
         }
-        console.log('Pull Request is about to be merged.');
-        yield octokit.pulls.merge(Object.assign(Object.assign({}, pullRequestId), { merge_method: mergeMethod }));
     }
     catch (error) {
         core.setFailed(error.message);
@@ -3657,6 +3697,269 @@ function isPlainObject(o) {
 }
 
 exports.isPlainObject = isPlainObject;
+
+
+/***/ }),
+
+/***/ 151:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+
+
+const isObject = val => val !== null && typeof val === 'object' && !Array.isArray(val);
+const identity = val => val;
+
+/* eslint-disable no-control-regex */
+// this is a modified version of https://github.com/chalk/ansi-regex (MIT License)
+const ANSI_REGEX = /[\u001b\u009b][[\]#;?()]*(?:(?:(?:[^\W_]*;?[^\W_]*)\u0007)|(?:(?:[0-9]{1,4}(;[0-9]{0,4})*)?[~0-9=<>cf-nqrtyA-PRZ]))/g;
+
+const create = () => {
+  const colors = { enabled: true, visible: true, styles: {}, keys: {} };
+
+  if ('FORCE_COLOR' in process.env) {
+    colors.enabled = process.env.FORCE_COLOR !== '0';
+  }
+
+  const ansi = style => {
+    let open = style.open = `\u001b[${style.codes[0]}m`;
+    let close = style.close = `\u001b[${style.codes[1]}m`;
+    let regex = style.regex = new RegExp(`\\u001b\\[${style.codes[1]}m`, 'g');
+    style.wrap = (input, newline) => {
+      if (input.includes(close)) input = input.replace(regex, close + open);
+      let output = open + input + close;
+      // see https://github.com/chalk/chalk/pull/92, thanks to the
+      // chalk contributors for this fix. However, we've confirmed that
+      // this issue is also present in Windows terminals
+      return newline ? output.replace(/\r*\n/g, `${close}$&${open}`) : output;
+    };
+    return style;
+  };
+
+  const wrap = (style, input, newline) => {
+    return typeof style === 'function' ? style(input) : style.wrap(input, newline);
+  };
+
+  const style = (input, stack) => {
+    if (input === '' || input == null) return '';
+    if (colors.enabled === false) return input;
+    if (colors.visible === false) return '';
+    let str = '' + input;
+    let nl = str.includes('\n');
+    let n = stack.length;
+    if (n > 0 && stack.includes('unstyle')) {
+      stack = [...new Set(['unstyle', ...stack])].reverse();
+    }
+    while (n-- > 0) str = wrap(colors.styles[stack[n]], str, nl);
+    return str;
+  };
+
+  const define = (name, codes, type) => {
+    colors.styles[name] = ansi({ name, codes });
+    let keys = colors.keys[type] || (colors.keys[type] = []);
+    keys.push(name);
+
+    Reflect.defineProperty(colors, name, {
+      configurable: true,
+      enumerable: true,
+      set(value) {
+        colors.alias(name, value);
+      },
+      get() {
+        let color = input => style(input, color.stack);
+        Reflect.setPrototypeOf(color, colors);
+        color.stack = this.stack ? this.stack.concat(name) : [name];
+        return color;
+      }
+    });
+  };
+
+  define('reset', [0, 0], 'modifier');
+  define('bold', [1, 22], 'modifier');
+  define('dim', [2, 22], 'modifier');
+  define('italic', [3, 23], 'modifier');
+  define('underline', [4, 24], 'modifier');
+  define('inverse', [7, 27], 'modifier');
+  define('hidden', [8, 28], 'modifier');
+  define('strikethrough', [9, 29], 'modifier');
+
+  define('black', [30, 39], 'color');
+  define('red', [31, 39], 'color');
+  define('green', [32, 39], 'color');
+  define('yellow', [33, 39], 'color');
+  define('blue', [34, 39], 'color');
+  define('magenta', [35, 39], 'color');
+  define('cyan', [36, 39], 'color');
+  define('white', [37, 39], 'color');
+  define('gray', [90, 39], 'color');
+  define('grey', [90, 39], 'color');
+
+  define('bgBlack', [40, 49], 'bg');
+  define('bgRed', [41, 49], 'bg');
+  define('bgGreen', [42, 49], 'bg');
+  define('bgYellow', [43, 49], 'bg');
+  define('bgBlue', [44, 49], 'bg');
+  define('bgMagenta', [45, 49], 'bg');
+  define('bgCyan', [46, 49], 'bg');
+  define('bgWhite', [47, 49], 'bg');
+
+  define('blackBright', [90, 39], 'bright');
+  define('redBright', [91, 39], 'bright');
+  define('greenBright', [92, 39], 'bright');
+  define('yellowBright', [93, 39], 'bright');
+  define('blueBright', [94, 39], 'bright');
+  define('magentaBright', [95, 39], 'bright');
+  define('cyanBright', [96, 39], 'bright');
+  define('whiteBright', [97, 39], 'bright');
+
+  define('bgBlackBright', [100, 49], 'bgBright');
+  define('bgRedBright', [101, 49], 'bgBright');
+  define('bgGreenBright', [102, 49], 'bgBright');
+  define('bgYellowBright', [103, 49], 'bgBright');
+  define('bgBlueBright', [104, 49], 'bgBright');
+  define('bgMagentaBright', [105, 49], 'bgBright');
+  define('bgCyanBright', [106, 49], 'bgBright');
+  define('bgWhiteBright', [107, 49], 'bgBright');
+
+  colors.ansiRegex = ANSI_REGEX;
+  colors.hasColor = colors.hasAnsi = str => {
+    colors.ansiRegex.lastIndex = 0;
+    return typeof str === 'string' && str !== '' && colors.ansiRegex.test(str);
+  };
+
+  colors.alias = (name, color) => {
+    let fn = typeof color === 'string' ? colors[color] : color;
+
+    if (typeof fn !== 'function') {
+      throw new TypeError('Expected alias to be the name of an existing color (string) or a function');
+    }
+
+    if (!fn.stack) {
+      Reflect.defineProperty(fn, 'name', { value: name });
+      colors.styles[name] = fn;
+      fn.stack = [name];
+    }
+
+    Reflect.defineProperty(colors, name, {
+      configurable: true,
+      enumerable: true,
+      set(value) {
+        colors.alias(name, value);
+      },
+      get() {
+        let color = input => style(input, color.stack);
+        Reflect.setPrototypeOf(color, colors);
+        color.stack = this.stack ? this.stack.concat(fn.stack) : fn.stack;
+        return color;
+      }
+    });
+  };
+
+  colors.theme = custom => {
+    if (!isObject(custom)) throw new TypeError('Expected theme to be an object');
+    for (let name of Object.keys(custom)) {
+      colors.alias(name, custom[name]);
+    }
+    return colors;
+  };
+
+  colors.alias('unstyle', str => {
+    if (typeof str === 'string' && str !== '') {
+      colors.ansiRegex.lastIndex = 0;
+      return str.replace(colors.ansiRegex, '');
+    }
+    return '';
+  });
+
+  colors.alias('noop', str => str);
+  colors.none = colors.clear = colors.noop;
+
+  colors.stripColor = colors.unstyle;
+  colors.symbols = __webpack_require__(522);
+  colors.define = define;
+  return colors;
+};
+
+module.exports = create();
+module.exports.create = create;
+
+
+/***/ }),
+
+/***/ 522:
+/***/ ((module) => {
+
+"use strict";
+
+
+const isHyper = process.env.TERM_PROGRAM === 'Hyper';
+const isWindows = process.platform === 'win32';
+const isLinux = process.platform === 'linux';
+
+const common = {
+  ballotDisabled: '☒',
+  ballotOff: '☐',
+  ballotOn: '☑',
+  bullet: '•',
+  bulletWhite: '◦',
+  fullBlock: '█',
+  heart: '❤',
+  identicalTo: '≡',
+  line: '─',
+  mark: '※',
+  middot: '·',
+  minus: '－',
+  multiplication: '×',
+  obelus: '÷',
+  pencilDownRight: '✎',
+  pencilRight: '✏',
+  pencilUpRight: '✐',
+  percent: '%',
+  pilcrow2: '❡',
+  pilcrow: '¶',
+  plusMinus: '±',
+  section: '§',
+  starsOff: '☆',
+  starsOn: '★',
+  upDownArrow: '↕'
+};
+
+const windows = Object.assign({}, common, {
+  check: '√',
+  cross: '×',
+  ellipsisLarge: '...',
+  ellipsis: '...',
+  info: 'i',
+  question: '?',
+  questionSmall: '?',
+  pointer: '>',
+  pointerSmall: '»',
+  radioOff: '( )',
+  radioOn: '(*)',
+  warning: '‼'
+});
+
+const other = Object.assign({}, common, {
+  ballotCross: '✘',
+  check: '✔',
+  cross: '✖',
+  ellipsisLarge: '⋯',
+  ellipsis: '…',
+  info: 'ℹ',
+  question: '?',
+  questionFull: '？',
+  questionSmall: '﹖',
+  pointer: isLinux ? '▸' : '❯',
+  pointerSmall: isLinux ? '‣' : '›',
+  radioOff: '◯',
+  radioOn: '◉',
+  warning: '⚠'
+});
+
+module.exports = (isWindows && !isHyper) ? windows : other;
+Reflect.defineProperty(module.exports, 'common', { enumerable: false, value: common });
+Reflect.defineProperty(module.exports, 'windows', { enumerable: false, value: windows });
+Reflect.defineProperty(module.exports, 'other', { enumerable: false, value: other });
 
 
 /***/ }),
