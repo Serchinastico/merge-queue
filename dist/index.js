@@ -156,7 +156,7 @@ const mergePullRequestIfPossible = (context, input, octoapi) => __awaiter(void 0
         return;
     }
     log_1.log(`Merging PR #${prNumber}.`, 'success');
-    yield octoapi.mergePullRequest(payload.pull_request.number, input.mergeMethod);
+    yield octoapi.mergePullRequest(payload.pull_request.number, payload.pull_request.head.ref, input.mergeMethod);
 });
 const run = () => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
@@ -271,13 +271,14 @@ exports.createOctoapi = ({ token, owner, repo, }) => {
     const octokit = github.getOctokit(token);
     const getPullRequest = (prNumber) => __awaiter(void 0, void 0, void 0, function* () { return yield octokit.pulls.get({ owner, repo, pull_number: prNumber }); });
     const getAllPullRequests = () => __awaiter(void 0, void 0, void 0, function* () { return yield octokit.pulls.list({ owner, repo }); });
-    const mergePullRequest = (prNumber, mergeMethod) => __awaiter(void 0, void 0, void 0, function* () {
-        return yield octokit.pulls.merge({
+    const mergePullRequest = (prNumber, ref, mergeMethod) => __awaiter(void 0, void 0, void 0, function* () {
+        yield octokit.pulls.merge({
             owner,
             repo,
             pull_number: prNumber,
             merge_method: mergeMethod,
         });
+        yield octokit.git.deleteRef({ owner, repo, ref });
     });
     const updatePullRequestWithBaseBranch = (prNumber) => __awaiter(void 0, void 0, void 0, function* () { return yield octokit.pulls.updateBranch({ owner, repo, pull_number: prNumber }); });
     const addLabel = (prNumber, label) => __awaiter(void 0, void 0, void 0, function* () {

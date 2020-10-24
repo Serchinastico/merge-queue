@@ -2,7 +2,6 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import { Context } from '@actions/github/lib/context'
 import * as Webhooks from '@octokit/webhooks'
-import c from 'ansi-colors'
 import { log } from './log'
 import { mapMergeMethod, MergeMethod } from './mergeMethod'
 import { createOctoapi, Octoapi } from './octoapi'
@@ -20,7 +19,6 @@ const getInput = (): Input => {
   const mergeErrorLabelName = core.getInput('error-label', { required: true })
   const githubToken = core.getInput('github-token', { required: true })
   const mergeMethod = core.getInput('merge-method', { required: true })
-
   const baseBranchName = core.getInput('base-branch', { required: true })
 
   return {
@@ -96,11 +94,6 @@ const mergePullRequestIfPossible = async (
 
   const pullRequest = await octoapi.getPullRequest(prNumber)
 
-  console.log('payload')
-  console.log(payload)
-  console.log('pullRequest')
-  console.log(pullRequest)
-
   if (pullRequest.data.state !== 'open') {
     log(`PR #${prNumber} is not open. Cannot merge it.`, 'error')
     return
@@ -138,7 +131,12 @@ const mergePullRequestIfPossible = async (
   }
 
   log(`Merging PR #${prNumber}.`, 'success')
-  await octoapi.mergePullRequest(payload.pull_request.number, input.mergeMethod)
+
+  await octoapi.mergePullRequest(
+    payload.pull_request.number,
+    payload.pull_request.head.ref,
+    input.mergeMethod
+  )
 }
 
 const run = async (): Promise<void> => {
