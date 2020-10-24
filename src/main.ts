@@ -170,8 +170,8 @@ const run = async (): Promise<void> => {
     const repo = repository?.name ?? ''
 
     if (input.graceTime > 0) {
-      log(`Sleeping for ${input.graceTime} ms`)
       await delay(input.graceTime)
+      log(`Sleeping 2 for ${input.graceTime} ms`)
     }
 
     const octoapi = createOctoapi({ token: input.githubToken, owner, repo })
