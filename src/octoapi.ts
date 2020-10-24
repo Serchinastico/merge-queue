@@ -22,7 +22,7 @@ export const createOctoapi = ({
 
   const mergePullRequest = async (
     prNumber: number,
-    ref: string,
+    branchName: string,
     mergeMethod: MergeMethod
   ) => {
     await octokit.pulls.merge({
@@ -32,7 +32,7 @@ export const createOctoapi = ({
       merge_method: mergeMethod,
     })
 
-    await octokit.git.deleteRef({ owner, repo, ref })
+    await octokit.git.deleteRef({ owner, repo, ref: `heads/${branchName}` })
   }
 
   const updatePullRequestWithBaseBranch = async (prNumber: number) =>

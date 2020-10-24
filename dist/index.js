@@ -138,7 +138,7 @@ const fireNextPullRequestUpdate = (input, octoapi) => __awaiter(void 0, void 0, 
     const allPullRequestsReadyToBeMerged = allOpenPullRequests.data.filter((pr) => isPullRequestMergeable(pr, input));
     let didMergeAnyPullRequest = false;
     while (!didMergeAnyPullRequest && allPullRequestsReadyToBeMerged.length > 0) {
-        const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.shift();
+        const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.pop();
         log_1.log(`Updating next PR in line: #${nextPullRequestInQueue.number}.`);
         try {
             yield octoapi.updatePullRequestWithBaseBranch(nextPullRequestInQueue.number);
@@ -309,14 +309,14 @@ exports.createOctoapi = ({ token, owner, repo, }) => {
     const octokit = github.getOctokit(token);
     const getPullRequest = (prNumber) => __awaiter(void 0, void 0, void 0, function* () { return yield octokit.pulls.get({ owner, repo, pull_number: prNumber }); });
     const getAllPullRequests = () => __awaiter(void 0, void 0, void 0, function* () { return yield octokit.pulls.list({ owner, repo }); });
-    const mergePullRequest = (prNumber, ref, mergeMethod) => __awaiter(void 0, void 0, void 0, function* () {
+    const mergePullRequest = (prNumber, branchName, mergeMethod) => __awaiter(void 0, void 0, void 0, function* () {
         yield octokit.pulls.merge({
             owner,
             repo,
             pull_number: prNumber,
             merge_method: mergeMethod,
         });
-        yield octokit.git.deleteRef({ owner, repo, ref });
+        yield octokit.git.deleteRef({ owner, repo, ref: `heads/${branchName}` });
     });
     const updatePullRequestWithBaseBranch = (prNumber) => __awaiter(void 0, void 0, void 0, function* () { return yield octokit.pulls.updateBranch({ owner, repo, pull_number: prNumber }); });
     const addLabel = (prNumber, label) => __awaiter(void 0, void 0, void 0, function* () {

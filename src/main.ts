@@ -63,7 +63,7 @@ const fireNextPullRequestUpdate = async (input: Input, octoapi: Octoapi) => {
   let didMergeAnyPullRequest = false
 
   while (!didMergeAnyPullRequest && allPullRequestsReadyToBeMerged.length > 0) {
-    const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.shift()!
+    const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.pop()!
 
     log(`Updating next PR in line: #${nextPullRequestInQueue.number}.`)
 
