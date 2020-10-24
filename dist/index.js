@@ -42,28 +42,19 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__webpack_require__(186));
 const github = __importStar(__webpack_require__(438));
 const ansi_colors_1 = __importDefault(__webpack_require__(151));
-const mapMergeMethod = (mergeMethod) => {
-    switch (mergeMethod) {
-        case 'merge':
-            return 'merge';
-        case 'rebase':
-            return 'rebase';
-        case 'squash':
-            return 'squash';
-        default:
-            core.warning(`Unknown merge method provided to the script: "${mergeMethod}", using default "merge" method.`);
-            return 'merge';
-    }
-};
+const mergeMethod_1 = __webpack_require__(742);
+const octoapi_1 = __webpack_require__(258);
 const getInput = () => {
     const mergeLabelName = core.getInput('merge-label', { required: true });
+    const mergeErrorLabelName = core.getInput('error-label', { required: true });
     const githubToken = core.getInput('github-token', { required: true });
     const mergeMethod = core.getInput('merge-method', { required: true });
     const baseBranchName = core.getInput('base-branch', { required: true });
     return {
         mergeLabelName,
+        mergeErrorLabelName,
         githubToken,
-        mergeMethod: mapMergeMethod(mergeMethod),
+        mergeMethod: mergeMethod_1.mapMergeMethod(mergeMethod),
         baseBranchName,
     };
 };
@@ -71,51 +62,32 @@ const isEventInBaseBranch = (context) => {
     const isFromPullRequest = !!context.payload.pull_request;
     return !isFromPullRequest;
 };
-const fireNextPullRequestUpdate = (context, input, octokit) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+const fireNextPullRequestUpdate = (context, input, octoapi) => __awaiter(void 0, void 0, void 0, function* () {
     const repository = context.payload.repository;
     const repositoryCompanyName = repository === null || repository === void 0 ? void 0 : repository.owner.name;
     const repositoryUserName = repository === null || repository === void 0 ? void 0 : repository.owner.login;
-    const owner = (_a = repositoryCompanyName !== null && repositoryCompanyName !== void 0 ? repositoryCompanyName : repositoryUserName) !== null && _a !== void 0 ? _a : '';
-    const repo = (_b = repository === null || repository === void 0 ? void 0 : repository.name) !== null && _b !== void 0 ? _b : '';
-    const allOpenPullRequests = yield octokit.pulls.list({
-        owner,
-        repo,
-        state: 'open',
-        base: input.baseBranchName,
-        sort: 'created',
-        direction: 'asc',
-    });
+    const allOpenPullRequests = yield octoapi.getAllPullRequests();
     const allPullRequestsReadyToBeMerged = allOpenPullRequests.data.filter((pr) => pr.labels.some((label) => label.name === input.mergeLabelName));
     let didMergeAnyPullRequest = false;
     while (!didMergeAnyPullRequest && allPullRequestsReadyToBeMerged.length > 0) {
-        const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.pop();
+        const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.shift();
         console.log(`Updating next Pull Request in line, which is ${ansi_colors_1.default.bold.yellow(`#${nextPullRequestInQueue.number}`)}.`);
         try {
-            yield octokit.pulls.updateBranch({
-                owner,
-                repo,
-                pull_number: nextPullRequestInQueue.number,
-            });
+            yield octoapi.updatePullRequestWithBaseBranch(nextPullRequestInQueue.number);
             didMergeAnyPullRequest = true;
         }
         catch (error) {
+            console.log(`Unable to update Pull Request ${ansi_colors_1.default.bold.yellow(`#${nextPullRequestInQueue.number}`)}.`);
             // All Pull Requests are issues
-            yield octokit.issues.removeLabel({
-                owner,
-                repo,
-                issue_number: nextPullRequestInQueue.number,
-                name: input.mergeLabelName,
-            });
-            core.setFailed(`Unable to merge Pull Request ${ansi_colors_1.default.bold.yellow(`#${nextPullRequestInQueue.number}`)}}.`);
+            yield octoapi.removeLabel(nextPullRequestInQueue.number, input.mergeLabelName);
+            yield octoapi.addLabel(nextPullRequestInQueue.number, input.mergeErrorLabelName);
         }
     }
     if (!didMergeAnyPullRequest) {
         console.log('No Pull Request found ready to be merged');
     }
 });
-const mergePullRequestIfPossible = (context, input, octokit) => __awaiter(void 0, void 0, void 0, function* () {
-    var _c;
+const mergePullRequestIfPossible = (context, input, octoapi) => __awaiter(void 0, void 0, void 0, function* () {
     const payload = context.payload;
     const labels = payload.pull_request.labels;
     const hasReadyToMergeLabel = labels.some((label) => label.name === input.mergeLabelName);
@@ -123,12 +95,7 @@ const mergePullRequestIfPossible = (context, input, octokit) => __awaiter(void 0
         console.log(`Pull Request does not have the "${ansi_colors_1.default.bold.blue(input.mergeLabelName)}" label.`);
         return;
     }
-    const pullRequestId = {
-        owner: (_c = payload.repository.owner.name) !== null && _c !== void 0 ? _c : payload.repository.owner.login,
-        repo: payload.repository.name,
-        pull_number: payload.pull_request.number,
-    };
-    const pullRequest = yield octokit.pulls.get(pullRequestId);
+    const pullRequest = yield octoapi.getPullRequest(payload.pull_request.number);
     if (pullRequest.data.state !== 'open') {
         console.log('Pull Request is not open. Cannot merge it.');
         return;
@@ -145,38 +112,37 @@ const mergePullRequestIfPossible = (context, input, octokit) => __awaiter(void 0
     if (pullRequest.data.mergeable_state === 'behind') {
         console.log('Pull Request is outdated.');
         // See if it's next in line
-        const allPullRequests = yield octokit.pulls.list({
-            owner: pullRequestId.owner,
-            repo: pullRequestId.repo,
-            state: 'open',
-            base: input.baseBranchName,
-            sort: 'created',
-            direction: 'asc',
-        });
+        const allPullRequests = yield octoapi.getAllPullRequests();
         const firstPullRequestInQueue = allPullRequests.data.find((pr) => pr.labels.find((label) => label.name === input.mergeLabelName));
         if ((firstPullRequestInQueue === null || firstPullRequestInQueue === void 0 ? void 0 : firstPullRequestInQueue.id) !== pullRequest.data.id) {
             console.log('Pull Request is not next in line. Waiting for other Pull Request to be merged first.');
             return;
         }
         console.log('Updating Pull Request.');
-        yield octokit.pulls.updateBranch(pullRequestId);
+        yield octoapi.updatePullRequestWithBaseBranch(payload.pull_request.number);
         return;
     }
     console.log('Pull Request is about to be merged.');
-    yield octokit.pulls.merge(Object.assign(Object.assign({}, pullRequestId), { merge_method: input.mergeMethod }));
+    yield octoapi.mergePullRequest(payload.pull_request.number, input.mergeMethod);
 });
 const run = () => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     try {
         const context = github.context;
         const input = getInput();
-        const octokit = github.getOctokit(input.githubToken);
+        const repository = context.payload.repository;
+        const repositoryCompanyName = repository === null || repository === void 0 ? void 0 : repository.owner.name;
+        const repositoryUserName = repository === null || repository === void 0 ? void 0 : repository.owner.login;
+        const owner = (_a = repositoryCompanyName !== null && repositoryCompanyName !== void 0 ? repositoryCompanyName : repositoryUserName) !== null && _a !== void 0 ? _a : '';
+        const repo = (_b = repository === null || repository === void 0 ? void 0 : repository.name) !== null && _b !== void 0 ? _b : '';
+        const octoapi = octoapi_1.createOctoapi({ token: input.githubToken, owner, repo });
         if (isEventInBaseBranch(context)) {
             console.log('Running base branch flow');
-            yield fireNextPullRequestUpdate(context, input, octokit);
+            yield fireNextPullRequestUpdate(context, input, octoapi);
         }
         else {
             console.log('Running Pull Request flow');
-            yield mergePullRequestIfPossible(context, input, octokit);
+            yield mergePullRequestIfPossible(context, input, octoapi);
         }
     }
     catch (error) {
@@ -184,6 +150,128 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 run();
+
+
+/***/ }),
+
+/***/ 742:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.mapMergeMethod = void 0;
+const core = __importStar(__webpack_require__(186));
+exports.mapMergeMethod = (mergeMethod) => {
+    switch (mergeMethod) {
+        case 'merge':
+            return 'merge';
+        case 'rebase':
+            return 'rebase';
+        case 'squash':
+            return 'squash';
+        default:
+            core.warning(`Unknown merge method provided to the script: "${mergeMethod}", using default "merge" method.`);
+            return 'merge';
+    }
+};
+
+
+/***/ }),
+
+/***/ 258:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createOctoapi = void 0;
+const github = __importStar(__webpack_require__(438));
+exports.createOctoapi = ({ token, owner, repo, }) => {
+    const octokit = github.getOctokit(token);
+    const getPullRequest = (prNumber) => __awaiter(void 0, void 0, void 0, function* () { return octokit.pulls.get({ owner, repo, pull_number: prNumber }); });
+    const getAllPullRequests = () => __awaiter(void 0, void 0, void 0, function* () { return octokit.pulls.list({ owner, repo }); });
+    const mergePullRequest = (prNumber, mergeMethod) => __awaiter(void 0, void 0, void 0, function* () {
+        return yield octokit.pulls.merge({
+            owner,
+            repo,
+            pull_number: prNumber,
+            merge_method: mergeMethod,
+        });
+    });
+    const updatePullRequestWithBaseBranch = (prNumber) => __awaiter(void 0, void 0, void 0, function* () { return octokit.pulls.updateBranch({ owner, repo, pull_number: prNumber }); });
+    const addLabel = (prNumber, label) => __awaiter(void 0, void 0, void 0, function* () {
+        return octokit.issues.addLabels({
+            owner,
+            repo,
+            issue_number: prNumber,
+            labels: [label],
+        });
+    });
+    const removeLabel = (prNumber, label) => __awaiter(void 0, void 0, void 0, function* () {
+        return octokit.issues.removeLabel({
+            owner,
+            repo,
+            issue_number: prNumber,
+            name: label,
+        });
+    });
+    return {
+        getPullRequest,
+        getAllPullRequests,
+        mergePullRequest,
+        updatePullRequestWithBaseBranch,
+        addLabel,
+        removeLabel,
+    };
+};
 
 
 /***/ }),

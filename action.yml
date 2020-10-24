@@ -17,6 +17,10 @@ inputs:
     required: false
     default: ready-to-merge
     description: 'Name of the label used to tag PRs as ready-to-merge'
+  error-label:
+    required: false
+    default: unable-to-merge
+    description: 'Name of the label used to notify that MergeBot can't merge a Pull Request'
 outputs:
   debug: # id of output
     description: 'The time we greeted you'

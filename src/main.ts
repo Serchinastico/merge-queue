@@ -4,40 +4,27 @@ import { Context } from '@actions/github/lib/context'
 import { GitHub } from '@actions/github/lib/utils'
 import * as Webhooks from '@octokit/webhooks'
 import c from 'ansi-colors'
+import { mapMergeMethod, MergeMethod } from './mergeMethod'
+import { createOctoapi, Octoapi } from './octoapi'
 
-type MergeMethod = 'merge' | 'rebase' | 'squash'
-type Octokit = InstanceType<typeof GitHub>
 interface Input {
   mergeLabelName: string
+  mergeErrorLabelName: string
   githubToken: string
   mergeMethod: MergeMethod
   baseBranchName: string
 }
 
-const mapMergeMethod = (mergeMethod: string): MergeMethod => {
-  switch (mergeMethod) {
-    case 'merge':
-      return 'merge'
-    case 'rebase':
-      return 'rebase'
-    case 'squash':
-      return 'squash'
-    default:
-      core.warning(
-        `Unknown merge method provided to the script: "${mergeMethod}", using default "merge" method.`
-      )
-      return 'merge'
-  }
-}
-
 const getInput = (): Input => {
   const mergeLabelName = core.getInput('merge-label', { required: true })
+  const mergeErrorLabelName = core.getInput('error-label', { required: true })
   const githubToken = core.getInput('github-token', { required: true })
   const mergeMethod = core.getInput('merge-method', { required: true })
   const baseBranchName = core.getInput('base-branch', { required: true })
 
   return {
     mergeLabelName,
+    mergeErrorLabelName,
     githubToken,
     mergeMethod: mapMergeMethod(mergeMethod),
     baseBranchName,
@@ -53,23 +40,13 @@ const isEventInBaseBranch = (context: Context) => {
 const fireNextPullRequestUpdate = async (
   context: Context,
   input: Input,
-  octokit: Octokit
+  octoapi: Octoapi
 ) => {
   const repository = context.payload.repository
   const repositoryCompanyName = repository?.owner.name
   const repositoryUserName = repository?.owner.login
 
-  const owner = repositoryCompanyName ?? repositoryUserName ?? ''
-  const repo = repository?.name ?? ''
-
-  const allOpenPullRequests = await octokit.pulls.list({
-    owner,
-    repo,
-    state: 'open',
-    base: input.baseBranchName,
-    sort: 'created',
-    direction: 'asc',
-  })
+  const allOpenPullRequests = await octoapi.getAllPullRequests()
 
   const allPullRequestsReadyToBeMerged = allOpenPullRequests.data.filter((pr) =>
     pr.labels.some((label) => label.name === input.mergeLabelName)
@@ -77,7 +54,7 @@ const fireNextPullRequestUpdate = async (
   let didMergeAnyPullRequest = false
 
   while (!didMergeAnyPullRequest && allPullRequestsReadyToBeMerged.length > 0) {
-    const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.pop()!
+    const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.shift()!
 
     console.log(
       `Updating next Pull Request in line, which is ${c.bold.yellow(
@@ -86,24 +63,26 @@ const fireNextPullRequestUpdate = async (
     )
 
     try {
-      await octokit.pulls.updateBranch({
-        owner,
-        repo,
-        pull_number: nextPullRequestInQueue.number,
-      })
+      await octoapi.updatePullRequestWithBaseBranch(
+        nextPullRequestInQueue.number
+      )
+
       didMergeAnyPullRequest = true
     } catch (error) {
-      // All Pull Requests are issues
-      await octokit.issues.removeLabel({
-        owner,
-        repo,
-        issue_number: nextPullRequestInQueue.number,
-        name: input.mergeLabelName,
-      })
-      core.setFailed(
-        `Unable to merge Pull Request ${c.bold.yellow(
+      console.log(
+        `Unable to update Pull Request ${c.bold.yellow(
           `#${nextPullRequestInQueue.number}`
-        )}}.`
+        )}.`
+      )
+      // All Pull Requests are issues
+      await octoapi.removeLabel(
+        nextPullRequestInQueue.number,
+        input.mergeLabelName
+      )
+
+      await octoapi.addLabel(
+        nextPullRequestInQueue.number,
+        input.mergeErrorLabelName
       )
     }
   }
@@ -116,7 +95,7 @@ const fireNextPullRequestUpdate = async (
 const mergePullRequestIfPossible = async (
   context: Context,
   input: Input,
-  octokit: Octokit
+  octoapi: Octoapi
 ) => {
   const payload = context.payload as Webhooks.EventPayloads.WebhookPayloadPullRequest
   const labels = payload.pull_request.labels
@@ -133,13 +112,7 @@ const mergePullRequestIfPossible = async (
     return
   }
 
-  const pullRequestId = {
-    owner: payload.repository.owner.name ?? payload.repository.owner.login,
-    repo: payload.repository.name,
-    pull_number: payload.pull_request.number,
-  }
-
-  const pullRequest = await octokit.pulls.get(pullRequestId)
+  const pullRequest = await octoapi.getPullRequest(payload.pull_request.number)
 
   if (pullRequest.data.state !== 'open') {
     console.log('Pull Request is not open. Cannot merge it.')
@@ -161,14 +134,7 @@ const mergePullRequestIfPossible = async (
     console.log('Pull Request is outdated.')
 
     // See if it's next in line
-    const allPullRequests = await octokit.pulls.list({
-      owner: pullRequestId.owner,
-      repo: pullRequestId.repo,
-      state: 'open',
-      base: input.baseBranchName,
-      sort: 'created',
-      direction: 'asc',
-    })
+    const allPullRequests = await octoapi.getAllPullRequests()
 
     const firstPullRequestInQueue = allPullRequests.data.find((pr) =>
       pr.labels.find((label) => label.name === input.mergeLabelName)
@@ -182,30 +148,34 @@ const mergePullRequestIfPossible = async (
     }
 
     console.log('Updating Pull Request.')
-    await octokit.pulls.updateBranch(pullRequestId)
+    await octoapi.updatePullRequestWithBaseBranch(payload.pull_request.number)
     return
   }
 
   console.log('Pull Request is about to be merged.')
-  await octokit.pulls.merge({
-    ...pullRequestId,
-    merge_method: input.mergeMethod,
-  })
+  await octoapi.mergePullRequest(payload.pull_request.number, input.mergeMethod)
 }
 
 const run = async (): Promise<void> => {
   try {
     const context = github.context
     const input = getInput()
-    const octokit = github.getOctokit(input.githubToken)
+
+    const repository = context.payload.repository
+    const repositoryCompanyName = repository?.owner.name
+    const repositoryUserName = repository?.owner.login
+
+    const owner = repositoryCompanyName ?? repositoryUserName ?? ''
+    const repo = repository?.name ?? ''
+
+    const octoapi = createOctoapi({ token: input.githubToken, owner, repo })
 
     if (isEventInBaseBranch(context)) {
       console.log('Running base branch flow')
-
-      await fireNextPullRequestUpdate(context, input, octokit)
+      await fireNextPullRequestUpdate(context, input, octoapi)
     } else {
       console.log('Running Pull Request flow')
-      await mergePullRequestIfPossible(context, input, octokit)
+      await mergePullRequestIfPossible(context, input, octoapi)
     }
   } catch (error) {
     core.setFailed(error.message)
