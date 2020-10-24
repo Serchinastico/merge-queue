@@ -1,0 +1,15 @@
+name: 'Main branch CI'
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  merge-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: mergebot
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

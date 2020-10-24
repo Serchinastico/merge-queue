@@ -1,6 +1,22 @@
 name: 'MergeBot'
 description: 'MergeBot merges open PRs in a safe manner'
 author: 'Sketch'
+inputs:
+  github-token:
+    required: true
+    description: "Github token used to apply changes to the Pull Request"
+  base-branch:
+    required: true
+    default: main
+    description: "Name of the default branch where the bot should merge Pull Requests"
+  merge-method:
+    required: false
+    default: squash
+    description: 'Method used to merge a Pull Request, possible values are: merge, rebase or squash'
+  merge-label:
+    required: false
+    default: ready-to-merge
+    description: 'Name of the label used to tag PRs as ready-to-merge'
 outputs:
   debug: # id of output
     description: 'The time we greeted you'
