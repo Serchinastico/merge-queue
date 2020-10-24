@@ -1,9 +1,9 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 import { Context } from '@actions/github/lib/context'
-import { GitHub } from '@actions/github/lib/utils'
 import * as Webhooks from '@octokit/webhooks'
 import c from 'ansi-colors'
+import { log } from './log'
 import { mapMergeMethod, MergeMethod } from './mergeMethod'
 import { createOctoapi, Octoapi } from './octoapi'
 
@@ -37,15 +37,7 @@ const isEventInBaseBranch = (context: Context) => {
   return !isFromPullRequest
 }
 
-const fireNextPullRequestUpdate = async (
-  context: Context,
-  input: Input,
-  octoapi: Octoapi
-) => {
-  const repository = context.payload.repository
-  const repositoryCompanyName = repository?.owner.name
-  const repositoryUserName = repository?.owner.login
-
+const fireNextPullRequestUpdate = async (input: Input, octoapi: Octoapi) => {
   const allOpenPullRequests = await octoapi.getAllPullRequests()
 
   const allPullRequestsReadyToBeMerged = allOpenPullRequests.data.filter((pr) =>
@@ -56,11 +48,7 @@ const fireNextPullRequestUpdate = async (
   while (!didMergeAnyPullRequest && allPullRequestsReadyToBeMerged.length > 0) {
     const nextPullRequestInQueue = allPullRequestsReadyToBeMerged.shift()!
 
-    console.log(
-      `Updating next Pull Request in line, which is ${c.bold.yellow(
-        `#${nextPullRequestInQueue.number}`
-      )}.`
-    )
+    log(`Updating next PR in line: #${nextPullRequestInQueue.number}.`)
 
     try {
       await octoapi.updatePullRequestWithBaseBranch(
@@ -69,11 +57,7 @@ const fireNextPullRequestUpdate = async (
 
       didMergeAnyPullRequest = true
     } catch (error) {
-      console.log(
-        `Unable to update Pull Request ${c.bold.yellow(
-          `#${nextPullRequestInQueue.number}`
-        )}.`
-      )
+      log(`Unable to update PR #${nextPullRequestInQueue.number}.`, 'error')
       // All Pull Requests are issues
       await octoapi.removeLabel(
         nextPullRequestInQueue.number,
@@ -88,7 +72,7 @@ const fireNextPullRequestUpdate = async (
   }
 
   if (!didMergeAnyPullRequest) {
-    console.log('No Pull Request found ready to be merged')
+    log('No PR found ready to be merged')
   }
 }
 
@@ -98,40 +82,37 @@ const mergePullRequestIfPossible = async (
   octoapi: Octoapi
 ) => {
   const payload = context.payload as Webhooks.EventPayloads.WebhookPayloadPullRequest
+  const prNumber = payload.pull_request.number
   const labels = payload.pull_request.labels
 
   const hasReadyToMergeLabel = labels.some(
     (label) => label.name === input.mergeLabelName
   )
   if (!hasReadyToMergeLabel) {
-    console.log(
-      `Pull Request does not have the "${c.bold.blue(
-        input.mergeLabelName
-      )}" label.`
-    )
+    log(`PR #${prNumber} does not have the "${input.mergeLabelName}" label.`)
     return
   }
 
-  const pullRequest = await octoapi.getPullRequest(payload.pull_request.number)
+  const pullRequest = await octoapi.getPullRequest(prNumber)
 
   if (pullRequest.data.state !== 'open') {
-    console.log('Pull Request is not open. Cannot merge it.')
+    log(`PR #${prNumber} is not open. Cannot merge it.`, 'error')
     return
   }
 
   if (pullRequest.data.draft) {
-    console.log('Pull Request is in draft. Cannot merge it.')
+    log(`PR #${prNumber} is in draft. Cannot merge it.`, 'error')
     return
   }
 
   if (!pullRequest.data.mergeable) {
-    console.log("Pull Request can't be merged.")
+    log(`PR #${prNumber} can't be merged.`, 'error')
     return
   }
 
   // Pull Request is out of date and we should update it
   if (pullRequest.data.mergeable_state === 'behind') {
-    console.log('Pull Request is outdated.')
+    log(`PR #${prNumber} is outdated.`)
 
     // See if it's next in line
     const allPullRequests = await octoapi.getAllPullRequests()
@@ -141,18 +122,16 @@ const mergePullRequestIfPossible = async (
     )
 
     if (firstPullRequestInQueue?.id !== pullRequest.data.id) {
-      console.log(
-        'Pull Request is not next in line. Waiting for other Pull Request to be merged first.'
-      )
+      log(`PR #${prNumber} is not next in line.`)
       return
     }
 
-    console.log('Updating Pull Request.')
+    log(`Updating PR #${prNumber}.`)
     await octoapi.updatePullRequestWithBaseBranch(payload.pull_request.number)
     return
   }
 
-  console.log('Pull Request is about to be merged.')
+  log(`Merging PR #${prNumber}.`, 'success')
   await octoapi.mergePullRequest(payload.pull_request.number, input.mergeMethod)
 }
 
@@ -171,10 +150,10 @@ const run = async (): Promise<void> => {
     const octoapi = createOctoapi({ token: input.githubToken, owner, repo })
 
     if (isEventInBaseBranch(context)) {
-      console.log('Running base branch flow')
-      await fireNextPullRequestUpdate(context, input, octoapi)
+      log('Running base branch flow')
+      await fireNextPullRequestUpdate(input, octoapi)
     } else {
-      console.log('Running Pull Request flow')
+      log('Running Pull Request flow')
       await mergePullRequestIfPossible(context, input, octoapi)
     }
   } catch (error) {

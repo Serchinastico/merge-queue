@@ -15,9 +15,10 @@ export const createOctoapi = ({
   const octokit = github.getOctokit(token)
 
   const getPullRequest = async (prNumber: number) =>
-    octokit.pulls.get({ owner, repo, pull_number: prNumber })
+    await octokit.pulls.get({ owner, repo, pull_number: prNumber })
 
-  const getAllPullRequests = async () => octokit.pulls.list({ owner, repo })
+  const getAllPullRequests = async () =>
+    await octokit.pulls.list({ owner, repo })
 
   const mergePullRequest = async (prNumber: number, mergeMethod: MergeMethod) =>
     await octokit.pulls.merge({
@@ -28,10 +29,10 @@ export const createOctoapi = ({
     })
 
   const updatePullRequestWithBaseBranch = async (prNumber: number) =>
-    octokit.pulls.updateBranch({ owner, repo, pull_number: prNumber })
+    await octokit.pulls.updateBranch({ owner, repo, pull_number: prNumber })
 
   const addLabel = async (prNumber: number, label: string) =>
-    octokit.issues.addLabels({
+    await octokit.issues.addLabels({
       owner,
       repo,
       issue_number: prNumber,
@@ -39,7 +40,7 @@ export const createOctoapi = ({
     })
 
   const removeLabel = async (prNumber: number, label: string) =>
-    octokit.issues.removeLabel({
+    await octokit.issues.removeLabel({
       owner,
       repo,
       issue_number: prNumber,
