@@ -1,6 +1,6 @@
-name: 'MergeBot'
-description: 'MergeBot merges open PRs in a safe manner'
-author: 'Sketch'
+name: "MergeBot"
+description: "MergeBot merges open PRs in a safe manner"
+author: "Sketch"
 inputs:
   github-token:
     required: true
@@ -12,18 +12,18 @@ inputs:
   merge-method:
     required: false
     default: squash
-    description: 'Method used to merge a Pull Request, possible values are: merge, rebase or squash'
+    description: "Method used to merge a Pull Request, possible values are: merge, rebase or squash"
   merge-label:
     required: false
     default: ready-to-merge
-    description: 'Name of the label used to tag PRs as ready-to-merge'
+    description: "Name of the label used to tag PRs as ready-to-merge"
   error-label:
     required: false
     default: unable-to-merge
-    description: 'Name of the label used to notify that MergeBot can't merge a Pull Request'
+    description: "Name of the label used to notify that MergeBot can"t merge a Pull Request"
 outputs:
   debug: # id of output
-    description: 'The time we greeted you'
+    description: "The time we greeted you"
 runs:
-  using: 'node12'
-  main: 'dist/index.js'
+  using: "node12"
+  main: "dist/index.js"
