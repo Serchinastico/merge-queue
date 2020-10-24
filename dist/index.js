@@ -2,6 +2,33 @@ require('./sourcemap-register.js');module.exports =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 7906:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.delay = void 0;
+exports.delay = (milliseconds) => __awaiter(void 0, void 0, void 0, function* () {
+    return new Promise((resolve) => {
+        if (!isNaN(milliseconds)) {
+            setTimeout(() => resolve(), milliseconds);
+        }
+    });
+});
+
+
+/***/ }),
+
 /***/ 3817:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -79,17 +106,21 @@ const github = __importStar(__webpack_require__(5438));
 const log_1 = __webpack_require__(3817);
 const mergeMethod_1 = __webpack_require__(3742);
 const octoapi_1 = __webpack_require__(2258);
+const delay_1 = __webpack_require__(7906);
 const getInput = () => {
-    const mergeLabelName = core.getInput('merge-label', { required: true });
-    const mergeErrorLabelName = core.getInput('error-label', { required: true });
+    var _a;
     const githubToken = core.getInput('github-token', { required: true });
     const mergeMethod = core.getInput('merge-method', { required: true });
+    const delayTime = core.getInput('delay-time', { required: true });
+    const mergeLabelName = core.getInput('merge-label', { required: true });
+    const mergeErrorLabelName = core.getInput('error-label', { required: true });
     const baseBranchName = core.getInput('base-branch', { required: true });
     return {
-        mergeLabelName,
-        mergeErrorLabelName,
         githubToken,
         mergeMethod: mergeMethod_1.mapMergeMethod(mergeMethod),
+        delayTime: (_a = Number.parseInt(delayTime)) !== null && _a !== void 0 ? _a : 0,
+        mergeLabelName,
+        mergeErrorLabelName,
         baseBranchName,
     };
 };
@@ -110,9 +141,9 @@ const fireNextPullRequestUpdate = (input, octoapi) => __awaiter(void 0, void 0, 
         }
         catch (error) {
             log_1.log(`Unable to update PR #${nextPullRequestInQueue.number}.`, 'error');
-            // All Pull Requests are issues
             yield octoapi.removeLabel(nextPullRequestInQueue.number, input.mergeLabelName);
             yield octoapi.addLabel(nextPullRequestInQueue.number, input.mergeErrorLabelName);
+            yield octoapi.postComment(nextPullRequestInQueue.number, 'I was unable to merge this PR. Please, read the logs for the last MergeBot action and try again when you solve the problem.');
         }
     }
     if (!didMergeAnyPullRequest) {
@@ -168,6 +199,7 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
         const repositoryUserName = repository === null || repository === void 0 ? void 0 : repository.owner.login;
         const owner = (_a = repositoryCompanyName !== null && repositoryCompanyName !== void 0 ? repositoryCompanyName : repositoryUserName) !== null && _a !== void 0 ? _a : '';
         const repo = (_b = repository === null || repository === void 0 ? void 0 : repository.name) !== null && _b !== void 0 ? _b : '';
+        yield delay_1.delay(input.delayTime);
         const octoapi = octoapi_1.createOctoapi({ token: input.githubToken, owner, repo });
         if (isEventInBaseBranch(context)) {
             log_1.log('Running base branch flow');
@@ -297,6 +329,14 @@ exports.createOctoapi = ({ token, owner, repo, }) => {
             name: label,
         });
     });
+    const postComment = (prNumber, body) => __awaiter(void 0, void 0, void 0, function* () {
+        return yield octokit.issues.createComment({
+            owner,
+            repo,
+            issue_number: prNumber,
+            body,
+        });
+    });
     return {
         getPullRequest,
         getAllPullRequests,
@@ -304,6 +344,7 @@ exports.createOctoapi = ({ token, owner, repo, }) => {
         updatePullRequestWithBaseBranch,
         addLabel,
         removeLabel,
+        postComment,
     };
 };
 

@@ -5,27 +5,31 @@ import * as Webhooks from '@octokit/webhooks'
 import { log } from './log'
 import { mapMergeMethod, MergeMethod } from './mergeMethod'
 import { createOctoapi, Octoapi } from './octoapi'
+import { delay } from './delay'
 
 interface Input {
-  mergeLabelName: string
-  mergeErrorLabelName: string
   githubToken: string
   mergeMethod: MergeMethod
+  delayTime: number
+  mergeLabelName: string
+  mergeErrorLabelName: string
   baseBranchName: string
 }
 
 const getInput = (): Input => {
-  const mergeLabelName = core.getInput('merge-label', { required: true })
-  const mergeErrorLabelName = core.getInput('error-label', { required: true })
   const githubToken = core.getInput('github-token', { required: true })
   const mergeMethod = core.getInput('merge-method', { required: true })
+  const delayTime = core.getInput('delay-time', { required: true })
+  const mergeLabelName = core.getInput('merge-label', { required: true })
+  const mergeErrorLabelName = core.getInput('error-label', { required: true })
   const baseBranchName = core.getInput('base-branch', { required: true })
 
   return {
-    mergeLabelName,
-    mergeErrorLabelName,
     githubToken,
     mergeMethod: mapMergeMethod(mergeMethod),
+    delayTime: Number.parseInt(delayTime) ?? 0,
+    mergeLabelName,
+    mergeErrorLabelName,
     baseBranchName,
   }
 }
@@ -57,7 +61,6 @@ const fireNextPullRequestUpdate = async (input: Input, octoapi: Octoapi) => {
       didMergeAnyPullRequest = true
     } catch (error) {
       log(`Unable to update PR #${nextPullRequestInQueue.number}.`, 'error')
-      // All Pull Requests are issues
       await octoapi.removeLabel(
         nextPullRequestInQueue.number,
         input.mergeLabelName
@@ -66,6 +69,11 @@ const fireNextPullRequestUpdate = async (input: Input, octoapi: Octoapi) => {
       await octoapi.addLabel(
         nextPullRequestInQueue.number,
         input.mergeErrorLabelName
+      )
+
+      await octoapi.postComment(
+        nextPullRequestInQueue.number,
+        'I was unable to merge this PR. Please, read the logs for the last MergeBot action and try again when you solve the problem.'
       )
     }
   }
@@ -151,8 +159,9 @@ const run = async (): Promise<void> => {
     const owner = repositoryCompanyName ?? repositoryUserName ?? ''
     const repo = repository?.name ?? ''
 
-    const octoapi = createOctoapi({ token: input.githubToken, owner, repo })
+    await delay(input.delayTime)
 
+    const octoapi = createOctoapi({ token: input.githubToken, owner, repo })
     if (isEventInBaseBranch(context)) {
       log('Running base branch flow')
       await fireNextPullRequestUpdate(input, octoapi)

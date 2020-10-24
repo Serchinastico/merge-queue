@@ -54,6 +54,14 @@ export const createOctoapi = ({
       name: label,
     })
 
+  const postComment = async (prNumber: number, body: string) =>
+    await octokit.issues.createComment({
+      owner,
+      repo,
+      issue_number: prNumber,
+      body,
+    })
+
   return {
     getPullRequest,
     getAllPullRequests,
@@ -61,5 +69,6 @@ export const createOctoapi = ({
     updatePullRequestWithBaseBranch,
     addLabel,
     removeLabel,
+    postComment,
   }
 }

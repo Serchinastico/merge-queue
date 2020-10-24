@@ -13,10 +13,18 @@ inputs:
     required: false
     default: squash
     description: 'Method used to merge a Pull Request, possible values are: merge, rebase or squash'
+  delay-time:
+    required: false
+    default: 0
+    description: 'Time (in ms) this script waits before even start. This gives some time for contributors to remove a wrong label'
   merge-label:
     required: false
     default: ready-to-merge
     description: 'Name of the label used to tag PRs as ready-to-merge'
+  block-label:
+    required: false
+    default: do-not-merge
+    description: 'Name of the label used to block merges'
   error-label:
     required: false
     default: unable-to-merge
