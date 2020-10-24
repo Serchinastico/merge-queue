@@ -156,9 +156,11 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
         const input = getInput();
         const octokit = github.getOctokit(input.githubToken);
         if (isEventInBaseBranch(context)) {
+            console.log('Running base branch flow');
             yield fireNextPullRequestUpdate(context, input, octokit);
         }
         else {
+            console.log('Running Pull Request flow');
             yield mergePullRequestIfPossible(context, input, octokit);
         }
     }

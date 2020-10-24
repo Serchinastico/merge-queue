@@ -179,8 +179,10 @@ const run = async (): Promise<void> => {
     const octokit = github.getOctokit(input.githubToken)
 
     if (isEventInBaseBranch(context)) {
+      console.log('Running base branch flow')
       await fireNextPullRequestUpdate(context, input, octokit)
     } else {
+      console.log('Running Pull Request flow')
       await mergePullRequestIfPossible(context, input, octokit)
     }
   } catch (error) {
