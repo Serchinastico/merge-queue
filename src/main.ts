@@ -10,7 +10,7 @@ import { delay } from './delay'
 interface Input {
   githubToken: string
   mergeMethod: MergeMethod
-  delayTime: number
+  graceTime: number
   mergeLabelName: string
   blockMergeLabelName: string
   mergeErrorLabelName: string
@@ -20,7 +20,7 @@ interface Input {
 const getInput = (): Input => {
   const githubToken = core.getInput('github-token', { required: true })
   const mergeMethod = core.getInput('merge-method', { required: true })
-  const delayTime = core.getInput('delay-time', { required: true })
+  const graceTime = core.getInput('grace-time', { required: true })
   const mergeLabelName = core.getInput('merge-label', { required: true })
   const blockMergeLabelName = core.getInput('block-label', { required: true })
   const mergeErrorLabelName = core.getInput('error-label', { required: true })
@@ -29,7 +29,7 @@ const getInput = (): Input => {
   return {
     githubToken,
     mergeMethod: mapMergeMethod(mergeMethod),
-    delayTime: Number.parseInt(delayTime) ?? 0,
+    graceTime: Number.parseInt(graceTime) ?? 0,
     mergeLabelName,
     blockMergeLabelName,
     mergeErrorLabelName,
@@ -169,8 +169,10 @@ const run = async (): Promise<void> => {
     const owner = repositoryCompanyName ?? repositoryUserName ?? ''
     const repo = repository?.name ?? ''
 
-    log(`Sleeping for ${input.delayTime} ms`)
-    await delay(input.delayTime)
+    if (input.graceTime > 0) {
+      log(`Sleeping for ${input.graceTime} ms`)
+      await delay(input.graceTime)
+    }
 
     const octoapi = createOctoapi({ token: input.githubToken, owner, repo })
     if (isEventInBaseBranch(context)) {

@@ -111,7 +111,7 @@ const getInput = () => {
     var _a;
     const githubToken = core.getInput('github-token', { required: true });
     const mergeMethod = core.getInput('merge-method', { required: true });
-    const delayTime = core.getInput('delay-time', { required: true });
+    const graceTime = core.getInput('grace-time', { required: true });
     const mergeLabelName = core.getInput('merge-label', { required: true });
     const blockMergeLabelName = core.getInput('block-label', { required: true });
     const mergeErrorLabelName = core.getInput('error-label', { required: true });
@@ -119,7 +119,7 @@ const getInput = () => {
     return {
         githubToken,
         mergeMethod: mergeMethod_1.mapMergeMethod(mergeMethod),
-        delayTime: (_a = Number.parseInt(delayTime)) !== null && _a !== void 0 ? _a : 0,
+        graceTime: (_a = Number.parseInt(graceTime)) !== null && _a !== void 0 ? _a : 0,
         mergeLabelName,
         blockMergeLabelName,
         mergeErrorLabelName,
@@ -202,8 +202,10 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
         const repositoryUserName = repository === null || repository === void 0 ? void 0 : repository.owner.login;
         const owner = (_a = repositoryCompanyName !== null && repositoryCompanyName !== void 0 ? repositoryCompanyName : repositoryUserName) !== null && _a !== void 0 ? _a : '';
         const repo = (_b = repository === null || repository === void 0 ? void 0 : repository.name) !== null && _b !== void 0 ? _b : '';
-        log_1.log(`Sleeping for ${input.delayTime} ms`);
-        yield delay_1.delay(input.delayTime);
+        if (input.graceTime > 0) {
+            log_1.log(`Sleeping for ${input.graceTime} ms`);
+            yield delay_1.delay(input.graceTime);
+        }
         const octoapi = octoapi_1.createOctoapi({ token: input.githubToken, owner, repo });
         if (isEventInBaseBranch(context)) {
             log_1.log('Running base branch flow');

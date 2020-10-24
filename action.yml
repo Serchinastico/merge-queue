@@ -13,7 +13,7 @@ inputs:
     required: false
     default: squash
     description: 'Method used to merge a Pull Request, possible values are: merge, rebase or squash'
-  delay-time:
+  grace-time:
     required: false
     default: 0
     description: 'Time (in ms) this script waits before even start. This gives some time for contributors to remove a wrong label'
