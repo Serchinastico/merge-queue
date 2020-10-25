@@ -8,6 +8,7 @@ jobs:
   merge-queue:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - name: MergeQueue
         uses: ./
         with:
