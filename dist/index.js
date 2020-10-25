@@ -54,7 +54,7 @@ const getBaseColor = (type) => {
  * This log function does some smart coloring.
  */
 exports.log = (message, type = 'info') => {
-    const header = ansi_colors_1.default.bold.blue('[MB] ');
+    const header = ansi_colors_1.default.bold.blue('[MQ] ');
     const baseColor = getBaseColor(type);
     const formattedMessage = message
         // Pull Request #

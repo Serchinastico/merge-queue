@@ -6,7 +6,7 @@ inputs:
     required: true
     description: 'Github token used to apply changes to the Pull Request'
   base-branch:
-    required: true
+    required: false
     default: main
     description: 'Name of the default branch where the bot should merge Pull Requests'
   merge-method:
@@ -24,14 +24,11 @@ inputs:
   block-label:
     required: false
     default: do-not-merge
-    description: 'Name of the label used to block merges'
+    description: 'Name of the label used to block merges. If this option is present, MergeQueue will never merge this Pull Request'
   error-label:
     required: false
     default: unable-to-merge
     description: "Name of the label used to notify that MergeBot can't merge a Pull Request"
-outputs:
-  debug: # id of output
-    description: 'The time we greeted you'
 runs:
   using: 'node12'
   main: 'dist/index.js'

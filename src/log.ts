@@ -16,7 +16,7 @@ const getBaseColor = (type: LogType) => {
  * This log function does some smart coloring.
  */
 export const log = (message: string, type: LogType = 'info') => {
-  const header = c.bold.blue('[MB] ')
+  const header = c.bold.blue('[MQ] ')
   const baseColor = getBaseColor(type)
   const formattedMessage = message
     // Pull Request #
