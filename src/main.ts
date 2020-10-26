@@ -87,7 +87,7 @@ const fireNextPullRequestUpdate = async (input: Input, octoapi: Octoapi) => {
 
       await octoapi.postComment(
         nextPullRequestInQueue.number,
-        'I was unable to merge this PR. Please, read the logs for the last MergeBot action and try again when you solve the problem.'
+        'I was unable to merge this PR. Please, read the logs for the last MergeQueue action and try again when you solve the problem.'
       )
     }
   }

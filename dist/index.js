@@ -148,7 +148,7 @@ const fireNextPullRequestUpdate = (input, octoapi) => __awaiter(void 0, void 0, 
             log_1.log(`Unable to update PR #${nextPullRequestInQueue.number}.`, 'error');
             yield octoapi.removeLabel(nextPullRequestInQueue.number, input.mergeLabelName);
             yield octoapi.addLabel(nextPullRequestInQueue.number, input.mergeErrorLabelName);
-            yield octoapi.postComment(nextPullRequestInQueue.number, 'I was unable to merge this PR. Please, read the logs for the last MergeBot action and try again when you solve the problem.');
+            yield octoapi.postComment(nextPullRequestInQueue.number, 'I was unable to merge this PR. Please, read the logs for the last MergeQueue action and try again when you solve the problem.');
         }
     }
     if (!didMergeAnyPullRequest) {

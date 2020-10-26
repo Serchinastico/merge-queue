@@ -88,4 +88,4 @@ This is the list of options that MergeQueue supports:
 | **grace-time**   |    ❌    |        `0`        | Time (in ms) this script waits before even start. This gives some time for contributors to remove a wrong label  |
 | **merge-label**  |    ❌    | `ready-to-merge`  | Name of the label used to tag PRs as ready-to-merge                                                              |
 | **block-label**  |    ❌    |  `do-not-merge`   | Name of the label used to block merges. If this option is present, MergeQueue will never merge this Pull Request |
-| **error-label**  |    ❌    | `unable-to-merge` | Name of the label used to notify that MergeBot can't merge a Pull Request                                        |
+| **error-label**  |    ❌    | `unable-to-merge` | Name of the label used to notify that MergeQueue can't merge a Pull Request                                      |

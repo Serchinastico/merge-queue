@@ -1,5 +1,5 @@
-name: 'MergeBot'
-description: 'MergeBot merges open PRs in a safe manner'
+name: 'MergeQueue'
+description: 'MergeQueue merges open PRs in a safe manner'
 author: 'Sketch'
 inputs:
   github-token:
@@ -28,7 +28,7 @@ inputs:
   error-label:
     required: false
     default: unable-to-merge
-    description: "Name of the label used to notify that MergeBot can't merge a Pull Request"
+    description: "Name of the label used to notify that MergeQueue can't merge a Pull Request"
 runs:
   using: 'node12'
   main: 'dist/index.js'
