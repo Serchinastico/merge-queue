@@ -1,4 +1,4 @@
-# MergeQueue Github Action
+# MergeQueue Github Action2
 
 Merge your Pull Requests in a safe way.
 
