@@ -607,10 +607,10 @@
   dependencies:
     "@types/node" ">= 8"
 
-"@octokit/webhooks@^7.20.1":
-  version "7.20.1"
-  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-7.20.1.tgz#5864f39e1cd590ad2a30292645ba441be873f849"
-  integrity sha512-9Mjn5gUDiE/RN0iInT+aPIIAOPxrSgEwscnueNgqUaFgEiLmpzXncTDbtT3LKRURONTH5OTCuL6G/YxOJZgvaQ==
+"@octokit/webhooks@^7.21.0":
+  version "7.21.0"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-7.21.0.tgz#2aee3404aa311740a5f4ea37b070268752e21b02"
+  integrity sha512-Mj7Pa6JZgSjfzQfYF3Bf5KpyhzEBv4kHbj2EjCB/vMQiZCiiW30j5rS6t/d0ZN0FBrlSOuJIT+YU8IJt30VyWA==
   dependencies:
     "@octokit/request-error" "^2.0.2"
     aggregate-error "^3.1.0"
