@@ -611,10 +611,10 @@
   resolved "https://registry.yarnpkg.com/@octokit/webhooks-definitions/-/webhooks-definitions-3.62.5.tgz#3b2443ee07bb00e6333ce6bef8ccf5eadfb08430"
   integrity sha512-1SWpIFhDLgus9aJ++GOnV/YYcT53glj/YDNzt45S47BfK2/tzYLHWHYFpmEO0frsSEKMFDewDy4c4cWuCpNH/g==
 
-"@octokit/webhooks@^8.5.2":
-  version "8.5.2"
-  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-8.5.2.tgz#b854be17d92ace5a7adbfe13b9245893dbd071a4"
-  integrity sha512-9jb+ac1jmdwWNa3FY93BDN48Pl76keOALbXJ88cUdD1trobTQvWYS2DIUPUy80tCX7O+pPINaaJb0JHbKorvZQ==
+"@octokit/webhooks@^8.5.3":
+  version "8.5.3"
+  resolved "https://registry.yarnpkg.com/@octokit/webhooks/-/webhooks-8.5.3.tgz#1d4348b9d6fb9709e8c8f5fe943a7af183e58cf5"
+  integrity sha512-hAHYHDC06KClFX2oKGxAZkolX9n9zU6PJ4UVJte87ZhH+Buui+hLPNKnSHYgsV7rn83kNItHTRfnfyRBD9CjkA==
   dependencies:
     "@octokit/request-error" "^2.0.2"
     "@octokit/webhooks-definitions" "3.62.5"
